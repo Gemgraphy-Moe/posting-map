@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>ポスティングマップ</title>
+<meta name="description" content="チラシのポスティング(戸別配布)記録アプリ。GPS経路の自動記録とピン打ちで配布状況を管理します。">
+<meta name="theme-color" content="#2f5d50">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232f5d50'/%3E%3Cpath d='M50 20c-12 0-22 9-22 22 0 16 22 38 22 38s22-22 22-38c0-13-10-22-22-22z' fill='%23fff'/%3E%3Ccircle cx='50' cy='42' r='9' fill='%232f5d50'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232f5d50'/%3E%3Cpath d='M50 20c-12 0-22 9-22 22 0 16 22 38 22 38s22-22 22-38c0-13-10-22-22-22z' fill='%23fff'/%3E%3Ccircle cx='50' cy='42' r='9' fill='%232f5d50'/%3E%3C/svg%3E">
+
+<!-- Leaflet (地図ライブラリ) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== 上部ステータスバー ===== -->
+<header id="statusBar">
+  <button id="menuBtn" class="icon-btn" title="履歴メニュー" aria-label="履歴メニュー">☰</button>
+
+  <div id="statsDisplay" class="stats-display">
+    <div class="stat"><span class="stat-label">本日</span><span id="statTodayCount" class="stat-value">0件</span></div>
+    <div class="stat"><span class="stat-label">本日距離</span><span id="statTodayDist" class="stat-value">0m</span></div>
+    <div class="stat"><span class="stat-label">累計</span><span id="statTotalCount" class="stat-value">0件</span></div>
+  </div>
+
+  <div id="recIndicator" class="rec-indicator hidden">
+    <span class="blink-dot"></span>
+    <span id="recTime">00:00</span>
+    <span id="recDist">0m</span>
+  </div>
+
+  <button id="settingsBtn" class="icon-btn" title="設定" aria-label="設定">⚙</button>
+</header>
+
+<!-- ===== 地図 ===== -->
+<div id="map"></div>
+
+<!-- 現在地追従トグル(地図右下に浮かせる) -->
+<button id="followBtn" class="fab" title="現在地に追従">📍</button>
+
+<!-- ===== 下部操作バー ===== -->
+<footer id="bottomBar">
+  <button id="recordBtn" class="big-btn record-btn">
+    <span class="btn-icon">●</span><span class="btn-text">記録開始</span>
+  </button>
+  <button id="deliverBtn" class="big-btn deliver-btn">
+    <span class="btn-icon">📮</span><span class="btn-text">ここに配った</span>
+  </button>
+</footer>
+
+<!-- ===== 履歴パネル(ボトムシート) ===== -->
+<div id="overlay" class="overlay hidden"></div>
+
+<div id="historyPanel" class="sheet hidden">
+  <div class="sheet-header">
+    <h2>履歴</h2>
+    <button class="close-btn" data-close="historyPanel">✕</button>
+  </div>
+  <div class="sheet-toolbar">
+    <span class="toolbar-label">配布ピンの表示</span>
+    <button id="pinsVisibleToggle" class="toggle-btn on" title="ピンの表示/非表示">📌</button>
+  </div>
+  <div id="historyList" class="sheet-body"></div>
+</div>
+
+<!-- ===== 設定パネル ===== -->
+<div id="settingsPanel" class="sheet hidden">
+  <div class="sheet-header">
+    <h2>設定</h2>
+    <button class="close-btn" data-close="settingsPanel">✕</button>
+  </div>
+  <div class="sheet-body">
+    <section class="settings-section">
+      <h3>データのバックアップ</h3>
+      <button id="exportBtn" class="wide-btn">JSONをエクスポート(ダウンロード)</button>
+      <button id="importBtn" class="wide-btn">JSONをインポート</button>
+      <input type="file" id="importFile" accept="application/json" class="hidden">
+    </section>
+    <section class="settings-section">
+      <h3>地図の帰属表示</h3>
+      <p class="small-note">地図データ &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</p>
+    </section>
+    <section class="settings-section">
+      <h3>危険な操作</h3>
+      <button id="deleteAllBtn" class="wide-btn danger-btn">全データを削除</button>
+    </section>
+    <section class="settings-section">
+      <p class="small-note" id="versionNote"></p>
+    </section>
+  </div>
+</div>
+
+<!-- ===== ピン種別選択シート(地図タップ時) ===== -->
+<div id="pinTypeSheet" class="sheet small-sheet hidden">
+  <div class="sheet-header">
+    <h2>ここに記録</h2>
+    <button class="close-btn" data-close="pinTypeSheet">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div class="pin-type-choices">
+      <button class="pin-choice-btn pin-delivered" data-type="delivered">✅ 配布済み</button>
+      <button class="pin-choice-btn pin-absent" data-type="absent">🏚 不在・ポスト無し</button>
+      <button class="pin-choice-btn pin-refused" data-type="refused">🚫 チラシお断り</button>
+    </div>
+    <label class="memo-label" for="pinMemoInput">メモ(任意)</label>
+    <textarea id="pinMemoInput" rows="2" placeholder="例: 犬に注意、来週また訪問 など"></textarea>
+    <div class="sheet-actions">
+      <button id="pinSaveBtn" class="wide-btn primary-btn">保存</button>
+      <button id="pinCancelBtn" class="wide-btn">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ピン詳細シート ===== -->
+<div id="pinDetailSheet" class="sheet small-sheet hidden">
+  <div class="sheet-header">
+    <h2 id="pinDetailTitle">ピン詳細</h2>
+    <button class="close-btn" data-close="pinDetailSheet">✕</button>
+  </div>
+  <div class="sheet-body">
+    <p id="pinDetailDate" class="pin-detail-line"></p>
+    <p id="pinDetailMemo" class="pin-detail-line"></p>
+    <div class="sheet-actions">
+      <button id="pinDeleteBtn" class="wide-btn danger-btn">このピンを削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 汎用トースト通知 ===== -->
+<div id="toast" class="toast hidden"></div>
+
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script src="app.js"></script>
+</body>
+</html>
