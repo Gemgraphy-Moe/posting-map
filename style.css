@@ -157,6 +157,11 @@ button {
 }
 .fab:active { transform: scale(0.95); }
 
+/* ベース地図切り替えボタンは現在地追従ボタンの真上に縦に並べる */
+#layerBtn {
+  bottom: calc(var(--footer-h) + var(--safe-bottom) + 14px + 48px + 10px);
+}
+
 /* ===== 下部操作バー ===== */
 #bottomBar {
   position: fixed;

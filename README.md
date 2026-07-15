@@ -27,6 +27,15 @@ GPS経路を自動で記録しながら、配布した場所・不在だった�
 
 GPSが使えないPC等から後日その日の経路を入力したい場合は、「☰」履歴メニュー内の「✏️ 経路を手で描く」から、地図をクリックして頂点をつなぎ経路を手動で作成・保存できます(記録中は利用できません)。
 
+## ベース地図の切り替え
+
+地図右下の「🗺」ボタンで、ベース地図を 国土地理院(標準地図) と OpenStreetMap の間で切り替えられます。
+
+- 既定は **国土地理院** です。全国の建物形状が入っているため、住宅地で一戸建ての位置が把握しやすく、ポスティング用途に向いています。
+- OpenStreetMapは住宅地の建物輪郭が未整備の地域があるため、必要に応じて切り替えてください。
+- 切り替えると「地図: 国土地理院(建物表示)」「地図: OpenStreetMap」とトースト表示され、選択内容は次回起動時も引き継がれます(端末の localStorage に保存)。
+- 切り替わるのは背景の地図タイルのみで、記録した経路やピンの表示には影響しません。
+
 ## 動作確認用デモモード
 
 PCのブラウザなどGPSが無い環境で動作確認したいときは、URLの末尾に `?demo=1` を付けて開いてください。
@@ -59,7 +68,9 @@ index.html?demo=1
 ## 使用ライブラリ
 
 - [Leaflet](https://leafletjs.com/)(地図描画、unpkg CDN経由)
-- 地図タイル: [OpenStreetMap](https://www.openstreetmap.org/copyright)( &copy; OpenStreetMap contributors )
+- 地図タイル(切り替え可能、既定は国土地理院):
+  - [国土地理院](https://maps.gsi.go.jp/development/ichiran.html)(標準地図。出典: 国土地理院)
+  - [OpenStreetMap](https://www.openstreetmap.org/copyright)( &copy; OpenStreetMap contributors )
 
 ## ブラウザ対応について
 

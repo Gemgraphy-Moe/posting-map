@@ -2,11 +2,11 @@
 
 /* ポスティングマップ Service Worker
    - アプリシェル(HTML/CSS/JS/マニフェスト)のみをキャッシュする
-   - 地図タイル(OpenStreetMap)は絶対にキャッシュしない
+   - 地図タイル(OpenStreetMap・国土地理院)は絶対にキャッシュしない
      -> 常に最新のタイルを取得し、キャッシュ容量の肥大化も防ぐ
 */
 
-const CACHE_NAME = 'posting-map-shell-v2';
+const CACHE_NAME = 'posting-map-shell-v3';
 
 const APP_SHELL = [
   './',
@@ -36,7 +36,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // 地図タイルはキャッシュしない(常にネットワークから取得)
-  if (url.hostname.endsWith('tile.openstreetmap.org')) {
+  if (url.hostname.endsWith('tile.openstreetmap.org') || url.hostname.endsWith('cyberjapandata.gsi.go.jp')) {
     return; // ブラウザの通常のfetchに任せる(SWで横取りしない)
   }
 

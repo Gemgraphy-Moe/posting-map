@@ -8,6 +8,7 @@
 
 const STORAGE_KEY = 'postingMapData';
 const DATA_VERSION = 1;
+const BASE_LAYER_STORAGE_KEY = 'postingMapBaseLayer'; // ベース地図の選択(データとは別キー)
 
 const ACCURACY_LIMIT_M = 50;   // これより精度(accuracy)が悪い点は捨てる
 const MIN_MOVE_M = 3;          // 前回の記録点からこの距離未満の移動は間引く
@@ -21,6 +22,27 @@ const PIN_COLORS = {
   delivered: '#2e9e5b',
   absent: '#8a8f98',
   refused: '#d1332a'
+};
+
+// ベース地図(タイルレイヤー)の定義。既定は国土地理院(建物形状が入っており戸建て住宅地の把握に向く)
+const BASE_LAYERS = {
+  gsi: {
+    label: '国土地理院(建物表示)',
+    url: 'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
+    options: {
+      maxNativeZoom: 18,   // 18より先はネイティブタイルが無いため拡大表示になる
+      maxZoom: 19,
+      attribution: '出典: <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>'
+    }
+  },
+  osm: {
+    label: 'OpenStreetMap',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    options: {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+    }
+  }
 };
 
 /* =========================================================================
@@ -72,6 +94,8 @@ function saveData() {
 const state = {
   data: loadData(),
   map: null,
+  baseLayerType: 'gsi',    // 'gsi' | 'osm'(現在のベース地図)
+  baseTileLayer: null,     // 現在地図に載っているベースタイルレイヤー
   gpsMarker: null,
   followMode: true,
   recording: false,
@@ -170,6 +194,38 @@ function showToast(msg) {
 /* =========================================================================
    4. 地図の初期化
 ========================================================================= */
+
+// 保存済みのベース地図設定を読み込む(未設定・不正値は国土地理院を既定にする)
+function loadBaseLayerType() {
+  try {
+    const saved = localStorage.getItem(BASE_LAYER_STORAGE_KEY);
+    return saved === 'osm' ? 'osm' : 'gsi';
+  } catch (e) {
+    return 'gsi';
+  }
+}
+
+// ベース地図(タイルレイヤーのみ)を切り替える。経路・ピン等の他レイヤーには影響しない
+function setBaseLayer(type, opts) {
+  const silent = opts && opts.silent;
+  if (!BASE_LAYERS[type]) return;
+
+  if (state.baseTileLayer) {
+    state.map.removeLayer(state.baseTileLayer);
+  }
+  const def = BASE_LAYERS[type];
+  state.baseTileLayer = L.tileLayer(def.url, def.options).addTo(state.map);
+  state.baseLayerType = type;
+
+  try {
+    localStorage.setItem(BASE_LAYER_STORAGE_KEY, type);
+  } catch (e) {
+    console.warn('地図設定の保存に失敗しました', e);
+  }
+
+  if (!silent) showToast(`地図: ${def.label}`);
+}
+
 function initMap() {
   // 初期中心地: デモモードは東京の住宅街付近、それ以外は東京駅付近(取得できたら現在地へ移動)
   const initialCenter = [35.681236, 139.767125];
@@ -178,11 +234,8 @@ function initMap() {
 
   L.control.zoom({ position: 'bottomright' }).addTo(state.map);
 
-  // OpenStreetMap タイル(帰属表示を明記)
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
-  }).addTo(state.map);
+  // ベース地図タイル(前回選択、無ければ国土地理院を既定表示)
+  setBaseLayer(loadBaseLayerType(), { silent: true });
 
   // 現在地マーカー(青丸)
   const gpsIcon = L.divIcon({ className: 'gps-marker', iconSize: [18, 18] });
@@ -869,6 +922,10 @@ function setupEventListeners() {
       const c = state.gpsMarker.getLatLng();
       state.map.panTo(c, { animate: true });
     }
+  });
+
+  document.getElementById('layerBtn').addEventListener('click', () => {
+    setBaseLayer(state.baseLayerType === 'gsi' ? 'osm' : 'gsi');
   });
 
   document.getElementById('menuBtn').addEventListener('click', () => {
