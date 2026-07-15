@@ -217,11 +217,23 @@ button {
 }
 .draw-bar-info {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: 16px;
+  align-items: center;
+  gap: 6px 16px;
   font-size: 13px;
   font-weight: 700;
   color: var(--color-primary-dark);
+}
+.draw-bar-info > span { white-space: nowrap; }
+.draw-date-label { font-weight: 700; white-space: nowrap; }
+.draw-date-input {
+  width: auto;
+  flex-shrink: 0;
+  padding: 4px 6px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 0;
 }
 .draw-bar-actions {
   display: flex;
@@ -386,6 +398,19 @@ button {
   padding: 8px;
   font-size: 15px;
   resize: none;
+}
+
+/* 日付入力(記録日): 既存のフォーム要素(メモ欄など)に馴染む見た目にする */
+.date-input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--color-text);
+  background: #fff;
+  margin-bottom: 12px;
 }
 
 .sheet-actions { margin-top: 14px; }

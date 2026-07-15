@@ -6,7 +6,7 @@
      -> 常に最新のタイルを取得し、キャッシュ容量の肥大化も防ぐ
 */
 
-const CACHE_NAME = 'posting-map-shell-v3';
+const CACHE_NAME = 'posting-map-shell-v4';
 
 const APP_SHELL = [
   './',

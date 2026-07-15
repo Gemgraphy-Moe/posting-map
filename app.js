@@ -174,6 +174,27 @@ function dateKeyOf(timestamp) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// <input type="date"> の値('YYYY-MM-DD')を保存用のタイムスタンプに変換する
+// - 今日の日付・空欄・不正な値は現在時刻(Date.now())扱いにする
+// - 過去(または未来)の日付は「その日の正午(ローカル時刻)」のタイムスタンプにする
+//   ※ new Date('YYYY-MM-DD') はUTC解釈になり日本時間とずれるため、必ず数値分解して組み立てる
+function timestampForDateInput(value) {
+  if (!value) return Date.now();
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m) return Date.now();
+  if (value === todayKey()) return Date.now();
+
+  const y = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10);
+  const d = parseInt(m[3], 10);
+  const dt = new Date(y, mo - 1, d, 12, 0, 0);
+  // 2月30日のような繰り上がりが起きた場合は不正な日付として今日扱いにする
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) {
+    return Date.now();
+  }
+  return dt.getTime();
+}
+
 function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -479,13 +500,13 @@ function updateRecIndicator() {
 /* =========================================================================
    9. ピン(配布記録)の管理
 ========================================================================= */
-function addPin(lat, lng, type, memo) {
+function addPin(lat, lng, type, memo, timestamp) {
   const pin = {
     id: genId(),
     sessionId: state.recording && state.currentSession ? state.currentSession.id : null,
     lat, lng, type,
     memo: memo || '',
-    timestamp: Date.now()
+    timestamp: timestamp || Date.now()
   };
   state.data.pins.push(pin);
   saveData();
@@ -578,6 +599,7 @@ function escapeHtml(str) {
 function openPinTypeSheet(lat, lng) {
   state.pendingPinLatLng = { lat, lng };
   document.getElementById('pinMemoInput').value = '';
+  document.getElementById('pinDateInput').value = todayKey();
   document.querySelectorAll('.pin-choice-btn').forEach((b) => b.classList.remove('selected'));
   document.getElementById('pinTypeSheet').dataset.selectedType = '';
   openSheet('pinTypeSheet');
@@ -719,6 +741,7 @@ function startDrawMode() {
     color: '#e0672a', weight: 5, opacity: 0.9, dashArray: '8 8'
   }).addTo(state.map);
 
+  document.getElementById('drawDateInput').value = todayKey();
   document.getElementById('drawBar').classList.remove('hidden');
   updateDrawBar();
   showToast('地図をタップして経路の頂点を追加してください');
@@ -788,12 +811,12 @@ function saveDrawnRoute() {
     return;
   }
 
-  const now = Date.now();
+  const ts = timestampForDateInput(document.getElementById('drawDateInput').value);
   const session = {
     id: genId(),
-    startTime: now,
-    endTime: now,
-    points: state.drawPoints.map((p) => ({ lat: p.lat, lng: p.lng, t: now })),
+    startTime: ts,
+    endTime: ts,
+    points: state.drawPoints.map((p) => ({ lat: p.lat, lng: p.lng, t: ts })),
     visible: true
   };
   session.distance = calcSessionDistance(session.points);
@@ -963,7 +986,8 @@ function setupEventListeners() {
     if (!type) { showToast('種別を選択してください'); return; }
     if (!state.pendingPinLatLng) { closePinTypeSheet(); return; }
     const memo = document.getElementById('pinMemoInput').value.trim();
-    addPin(state.pendingPinLatLng.lat, state.pendingPinLatLng.lng, type, memo);
+    const timestamp = timestampForDateInput(document.getElementById('pinDateInput').value);
+    addPin(state.pendingPinLatLng.lat, state.pendingPinLatLng.lng, type, memo, timestamp);
     showToast(`${PIN_LABELS[type]}として記録しました`);
     closePinTypeSheet();
     closeSheet('pinTypeSheet');

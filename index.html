@@ -61,6 +61,8 @@
   <div class="draw-bar-info">
     <span id="drawPointCount">0点</span>
     <span id="drawDistance">0m</span>
+    <label class="draw-date-label" for="drawDateInput">記録日</label>
+    <input type="date" id="drawDateInput" class="date-input draw-date-input">
   </div>
   <div class="draw-bar-actions">
     <button id="drawUndoBtn" class="draw-bar-btn">↩ 1つ戻す</button>
@@ -127,6 +129,8 @@
       <button class="pin-choice-btn pin-absent" data-type="absent">🏚 不在・ポスト無し</button>
       <button class="pin-choice-btn pin-refused" data-type="refused">🚫 チラシお断り</button>
     </div>
+    <label class="memo-label" for="pinDateInput">記録日</label>
+    <input type="date" id="pinDateInput" class="date-input">
     <label class="memo-label" for="pinMemoInput">メモ(任意)</label>
     <textarea id="pinMemoInput" rows="2" placeholder="例: 犬に注意、来週また訪問 など"></textarea>
     <div class="sheet-actions">
