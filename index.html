@@ -53,6 +53,19 @@
   </button>
 </footer>
 
+<!-- ===== 経路手描きモード 操作バー ===== -->
+<div id="drawBar" class="draw-bar hidden">
+  <div class="draw-bar-info">
+    <span id="drawPointCount">0点</span>
+    <span id="drawDistance">0m</span>
+  </div>
+  <div class="draw-bar-actions">
+    <button id="drawUndoBtn" class="draw-bar-btn">↩ 1つ戻す</button>
+    <button id="drawSaveBtn" class="draw-bar-btn draw-bar-save">✓ 保存</button>
+    <button id="drawCancelBtn" class="draw-bar-btn draw-bar-cancel">✕ キャンセル</button>
+  </div>
+</div>
+
 <!-- ===== 履歴パネル(ボトムシート) ===== -->
 <div id="overlay" class="overlay hidden"></div>
 
@@ -64,6 +77,9 @@
   <div class="sheet-toolbar">
     <span class="toolbar-label">配布ピンの表示</span>
     <button id="pinsVisibleToggle" class="toggle-btn on" title="ピンの表示/非表示">📌</button>
+  </div>
+  <div class="sheet-toolbar">
+    <button id="drawRouteBtn" class="wide-btn draw-route-btn">✏️ 経路を手で描く</button>
   </div>
   <div id="historyList" class="sheet-body"></div>
 </div>

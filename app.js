@@ -87,7 +87,11 @@ const state = {
   editingPinId: null,        // 詳細シートで開いているピンID
   demoMode: false,
   demoTimer: null,
-  demoIndex: 0
+  demoIndex: 0,
+  drawMode: false,           // 経路手描きモード中か
+  drawPoints: [],            // 手描き中の頂点 [{lat,lng}]
+  drawPreviewLayer: null,    // 手描き中のプレビュー用ポリライン(破線)
+  drawVertexLayers: []       // 手描き中の頂点マーカー群
 };
 
 /* =========================================================================
@@ -185,7 +189,12 @@ function initMap() {
   state.gpsMarker = L.marker(initialCenter, { icon: gpsIcon, zIndexOffset: 1000 }).addTo(state.map);
 
   // 地図をタップ(ドラッグを伴わないクリック)したら任意地点にピン追加
+  // ただし経路手描きモード中はピン追加ではなく経路の頂点追加として扱う
   state.map.on('click', (e) => {
+    if (state.drawMode) {
+      addDrawPoint(e.latlng.lat, e.latlng.lng);
+      return;
+    }
     openPinTypeSheet(e.latlng.lat, e.latlng.lng);
   });
 
@@ -640,7 +649,114 @@ function renderHistoryList() {
 }
 
 /* =========================================================================
-   11. 統計表示
+   11. 経路手描きモード(地図クリックで経路の頂点を追加して手動で経路を作る)
+   - スマホでのGPS記録の代わりに、PC等から後日その日の経路を入力する用途を想定
+========================================================================= */
+function startDrawMode() {
+  if (state.recording) {
+    showToast('記録中は経路を手で描けません。先に記録を停止してください');
+    return;
+  }
+  if (state.drawMode) return;
+
+  closeAllSheets();
+  state.drawMode = true;
+  state.drawPoints = [];
+  state.drawPreviewLayer = L.polyline([], {
+    color: '#e0672a', weight: 5, opacity: 0.9, dashArray: '8 8'
+  }).addTo(state.map);
+
+  document.getElementById('drawBar').classList.remove('hidden');
+  updateDrawBar();
+  showToast('地図をタップして経路の頂点を追加してください');
+}
+
+function addDrawPoint(lat, lng) {
+  state.drawPoints.push({ lat, lng });
+  state.drawPreviewLayer.addLatLng([lat, lng]);
+
+  const vertex = L.circleMarker([lat, lng], {
+    radius: 5, color: '#fff', weight: 2, fillColor: '#e0672a', fillOpacity: 1
+  }).addTo(state.map);
+  state.drawVertexLayers.push(vertex);
+
+  updateDrawBar();
+}
+
+function undoDrawPoint() {
+  if (state.drawPoints.length === 0) return;
+  state.drawPoints.pop();
+
+  const latlngs = state.drawPreviewLayer.getLatLngs();
+  latlngs.pop();
+  state.drawPreviewLayer.setLatLngs(latlngs);
+
+  const vertex = state.drawVertexLayers.pop();
+  if (vertex) state.map.removeLayer(vertex);
+
+  updateDrawBar();
+}
+
+function updateDrawBar() {
+  const count = state.drawPoints.length;
+  const dist = calcSessionDistance(state.drawPoints);
+  document.getElementById('drawPointCount').textContent = `${count}点`;
+  document.getElementById('drawDistance').textContent = formatDistance(dist);
+}
+
+// 手描き中のプレビューレイヤー(ポリライン・頂点マーカー)をすべて地図から除去
+function clearDrawLayers() {
+  if (state.drawPreviewLayer) {
+    state.map.removeLayer(state.drawPreviewLayer);
+    state.drawPreviewLayer = null;
+  }
+  state.drawVertexLayers.forEach((v) => state.map.removeLayer(v));
+  state.drawVertexLayers = [];
+}
+
+// 手描きモードを終了し、地図クリックの挙動を通常(ピン追加)に戻す
+function exitDrawMode() {
+  state.drawMode = false;
+  state.drawPoints = [];
+  clearDrawLayers();
+  document.getElementById('drawBar').classList.add('hidden');
+}
+
+function cancelDrawMode() {
+  if (!state.drawMode) return;
+  exitDrawMode();
+  showToast('経路の手描きをキャンセルしました');
+}
+
+function saveDrawnRoute() {
+  if (!state.drawMode) return;
+  if (state.drawPoints.length < 2) {
+    showToast('頂点を2つ以上追加してから保存してください');
+    return;
+  }
+
+  const now = Date.now();
+  const session = {
+    id: genId(),
+    startTime: now,
+    endTime: now,
+    points: state.drawPoints.map((p) => ({ lat: p.lat, lng: p.lng, t: now })),
+    visible: true
+  };
+  session.distance = calcSessionDistance(session.points);
+  state.data.sessions.push(session);
+  saveData();
+
+  exitDrawMode();
+
+  renderAllSessions();
+  updateStatsDisplay();
+  renderHistoryList();
+  showToast(`経路を保存しました(${formatDistance(session.distance)})`);
+}
+
+/* =========================================================================
+   12. 統計表示
 ========================================================================= */
 function updateStatsDisplay() {
   const today = todayKey();
@@ -658,7 +774,7 @@ function updateStatsDisplay() {
 }
 
 /* =========================================================================
-   12. ボトムシート開閉の共通処理
+   13. ボトムシート開閉の共通処理
 ========================================================================= */
 function openSheet(id) {
   document.getElementById('overlay').classList.remove('hidden');
@@ -678,7 +794,7 @@ function closeAllSheets() {
 }
 
 /* =========================================================================
-   13. データのエクスポート・インポート・全削除
+   14. データのエクスポート・インポート・全削除
 ========================================================================= */
 function exportData() {
   const blob = new Blob([JSON.stringify(state.data, null, 2)], { type: 'application/json' });
@@ -738,7 +854,7 @@ function deleteAllData() {
 }
 
 /* =========================================================================
-   14. イベント登録・初期化
+   15. イベント登録・初期化
 ========================================================================= */
 function setupEventListeners() {
   document.getElementById('recordBtn').addEventListener('click', () => {
@@ -770,6 +886,12 @@ function setupEventListeners() {
     setPinsVisible(!state.pinsVisible);
     e.currentTarget.classList.toggle('on', state.pinsVisible);
   });
+
+  // 経路手描きモード
+  document.getElementById('drawRouteBtn').addEventListener('click', startDrawMode);
+  document.getElementById('drawUndoBtn').addEventListener('click', undoDrawPoint);
+  document.getElementById('drawSaveBtn').addEventListener('click', saveDrawnRoute);
+  document.getElementById('drawCancelBtn').addEventListener('click', cancelDrawMode);
 
   // ピン種別選択シート
   document.querySelectorAll('.pin-choice-btn').forEach((btn) => {
