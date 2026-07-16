@@ -16,12 +16,14 @@ const MIN_MOVE_M = 3;          // 前回の記録点からこの距離未満の�
 const PIN_LABELS = {
   delivered: '配布済み',
   absent: '不在・ポスト無し',
-  refused: 'チラシお断り'
+  refused: 'チラシお断り',
+  shop: '取扱店舗'
 };
 const PIN_COLORS = {
   delivered: '#2e9e5b',
   absent: '#8a8f98',
-  refused: '#d1332a'
+  refused: '#7d3c98',
+  shop: '#d1332a'
 };
 
 // ベース地図(タイルレイヤー)の定義。既定は国土地理院(建物形状が入っており戸建て住宅地の把握に向く)
@@ -539,11 +541,13 @@ function quickDeliverHere() {
 function pinIcon(type) {
   const color = PIN_COLORS[type];
   const isRefused = type === 'refused';
-  const size = isRefused ? 26 : 20;
+  const isShop = type === 'shop';
+  const size = (isRefused || isShop) ? 26 : 20;
+  const radius = isShop ? '25%' : '50%';
   return L.divIcon({
     className: '',
     html: `<div style="
-      width:${size}px;height:${size}px;border-radius:50%;
+      width:${size}px;height:${size}px;border-radius:${radius};
       background:${color};border:2px solid #fff;
       box-shadow:0 1px 4px rgba(0,0,0,0.5);
       ${isRefused ? 'outline:2px solid ' + color + ';' : ''}

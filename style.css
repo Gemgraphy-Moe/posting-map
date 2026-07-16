@@ -13,7 +13,8 @@
   --color-border: #d9d9d6;
   --pin-delivered: #2e9e5b;
   --pin-absent: #8a8f98;
-  --pin-refused: #d1332a;
+  --pin-refused: #7d3c98;
+  --pin-shop: #d1332a;
   --header-h: 56px;
   --footer-h: 92px;
   --safe-top: env(safe-area-inset-top, 0px);
@@ -385,10 +386,12 @@ button {
 .pin-choice-btn.pin-delivered { border-color: var(--pin-delivered); color: var(--pin-delivered); }
 .pin-choice-btn.pin-absent { border-color: var(--pin-absent); color: var(--pin-absent); }
 .pin-choice-btn.pin-refused { border-color: var(--pin-refused); color: var(--pin-refused); }
+.pin-choice-btn.pin-shop { border-color: var(--pin-shop); color: var(--pin-shop); }
 .pin-choice-btn.selected { color: #fff; }
 .pin-choice-btn.pin-delivered.selected { background: var(--pin-delivered); }
 .pin-choice-btn.pin-absent.selected { background: var(--pin-absent); }
 .pin-choice-btn.pin-refused.selected { background: var(--pin-refused); }
+.pin-choice-btn.pin-shop.selected { background: var(--pin-shop); }
 
 .memo-label { font-size: 13px; color: var(--color-gray); display: block; margin-bottom: 4px; }
 #pinMemoInput {
